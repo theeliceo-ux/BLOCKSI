@@ -1,0 +1,6 @@
+{
+  "name": "BLOCKSI",
+  "description": "Sistema personal de organización, diario digital, notas enriquecidas y gestor de recordatorios con funcionamiento local y offline avanzado.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

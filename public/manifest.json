@@ -1,0 +1,24 @@
+{
+  "name": "BLOCKSI - Organizador Personal",
+  "short_name": "BLOCKSI",
+  "description": "Sistema personal de organización, notas ricas y recordatorios persistentes.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0f172a",
+  "theme_color": "#6366f1",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 128 128' fill='%236366f1'><rect width='128' height='128' rx='28'/><path d='M36 36h24v24H36zM68 36h24v24H68zM36 68h24v24H36z' fill='%23ffffff'/><rect x='68' y='68' width='24' height='24' rx='6' fill='%2338bdf8'/></svg>",
+      "sizes": "128x128",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512' fill='%236366f1'><rect width='512' height='512' rx='112'/><path d='M144 144h96v96h-96zm128 0h96v96h-96zm-128 128h96v96h-96z' fill='%23ffffff'/><rect x='272' y='272' width='96' height='96' rx='24' fill='%2338bdf8'/></svg>",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
