@@ -31,7 +31,11 @@ export const SettingsView: React.FC = () => {
     clearAllData,
     exportJsonData,
     importJsonData,
-    triggerMockNotification
+    triggerMockNotification,
+    pushToGitHub,
+    pullFromGitHub,
+    isGitHubSyncing,
+    lastGitSyncTime,
   } = useBlocksi();
 
   // Settings states
@@ -39,6 +43,15 @@ export const SettingsView: React.FC = () => {
   const [fontSize, setFontSize] = useState(settings.fontSize);
   const [notifications, setNotifications] = useState(settings.notificationsEnabled);
   const [language, setLanguage] = useState(settings.language);
+
+  // GitHub Sync states
+  const [ghEnabled, setGhEnabled] = useState(settings.githubEnabled || false);
+  const [ghUsername, setGhUsername] = useState(settings.githubUsername || '');
+  const [ghRepo, setGhRepo] = useState(settings.githubRepo || '');
+  const [ghBranch, setGhBranch] = useState(settings.githubBranch || 'main');
+  const [ghToken, setGhToken] = useState(settings.githubToken || '');
+  const [ghPath, setGhPath] = useState(settings.githubPath || 'blocksi-data.json');
+  const [syncMsg, setSyncMsg] = useState<{ type: 'success' | 'error' | ''; text: string }>({ type: '', text: '' });
 
   // Taxonomy states
   const [newCatName, setNewCatName] = useState('');
@@ -54,6 +67,12 @@ export const SettingsView: React.FC = () => {
       fontSize,
       notificationsEnabled: notifications,
       autoBackup: settings.autoBackup,
+      githubEnabled: ghEnabled,
+      githubUsername: ghUsername.trim(),
+      githubRepo: ghRepo.trim(),
+      githubBranch: ghBranch.trim(),
+      githubToken: ghToken.trim(),
+      githubPath: ghPath.trim(),
     });
 
     // In a real browser, toggle root HTML class if theme is modified
@@ -144,12 +163,14 @@ export const SettingsView: React.FC = () => {
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         
         {/* Left side: config parameters (8 cols) */}
-        <div className="lg:col-span-8 bg-white border-2 border-black rounded-none p-5 md:p-6 space-y-6 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
+        <div className="lg:col-span-8 space-y-6">
           
-          <div className="flex items-center gap-2.5 border-b-2 border-black pb-3">
-            <Settings className="text-black" size={20} />
-            <h2 className="font-serif font-black text-lg text-black uppercase tracking-tight">General y Apariencia</h2>
-          </div>
+          <div className="bg-white border-2 border-black rounded-none p-5 md:p-6 space-y-6 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
+            
+            <div className="flex items-center gap-2.5 border-b-2 border-black pb-3">
+              <Settings className="text-black" size={20} />
+              <h2 className="font-serif font-black text-lg text-black uppercase tracking-tight">General y Apariencia</h2>
+            </div>
 
           <div className="space-y-5">
             
@@ -274,10 +295,159 @@ export const SettingsView: React.FC = () => {
                 className="py-2.5 px-5 bg-[#FF4D00] hover:bg-black text-white border-2 border-black rounded-none text-xs font-serif font-black uppercase tracking-wider transition-all shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5 cursor-pointer"
               >
                 Guardar Configuración
-              </button>
-            </div>
+            </button>
           </div>
         </div>
+      </div>
+
+      {/* Sincronización en la Nube con GitHub */}
+      <div className="bg-white border-2 border-black rounded-none p-5 md:p-6 space-y-6 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
+        <div className="flex items-center justify-between border-b-2 border-black pb-3">
+          <div className="flex items-center gap-2.5">
+            <FolderSync className="text-[#FF4D00]" size={20} />
+            <h2 className="font-serif font-black text-base text-black uppercase tracking-tight">Sincronización en la Nube con GitHub</h2>
+          </div>
+          <button
+            type="button"
+            onClick={() => setGhEnabled(!ghEnabled)}
+            className={`w-12 h-6 border-2 border-black rounded-none p-0.5 transition-all duration-200 cursor-pointer ${
+              ghEnabled ? 'bg-[#FF4D00]' : 'bg-[#EFEFEF]'
+            }`}
+          >
+            <div className={`w-4 h-4 border border-black bg-white transition-all duration-200 ${
+              ghEnabled ? 'translate-x-6' : 'translate-x-0.5'
+            }`} />
+          </button>
+        </div>
+
+        <p className="text-[11px] font-mono font-bold text-black/60 uppercase leading-relaxed">
+          Permite guardar tus notas, recordatorios, y configuraciones directamente en tu propio repositorio de GitHub. 
+          Al tener activado esto, la aplicación leerá del archivo JSON al iniciar y guardará tus cambios al sincronizar, logrando persistencia total en repositorios estáticos.
+        </p>
+
+        {ghEnabled && (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-1">
+            <div className="space-y-1.5">
+              <label className="text-[10px] font-mono font-black text-black/60 uppercase block tracking-wider">Usuario de GitHub</label>
+              <input
+                type="text"
+                placeholder="ej. theeliceo"
+                value={ghUsername}
+                onChange={(e) => setGhUsername(e.target.value)}
+                className="w-full bg-[#F9F9F7] border-2 border-black rounded-none px-3 py-2 text-xs text-black focus:outline-none focus:border-[#FF4D00] placeholder-black/30 font-sans font-bold uppercase"
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="text-[10px] font-mono font-black text-black/60 uppercase block tracking-wider">Repositorio</label>
+              <input
+                type="text"
+                placeholder="ej. blocksi"
+                value={ghRepo}
+                onChange={(e) => setGhRepo(e.target.value)}
+                className="w-full bg-[#F9F9F7] border-2 border-black rounded-none px-3 py-2 text-xs text-black focus:outline-none focus:border-[#FF4D00] placeholder-black/30 font-sans font-bold uppercase"
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="text-[10px] font-mono font-black text-black/60 uppercase block tracking-wider">Rama (Branch)</label>
+              <input
+                type="text"
+                placeholder="ej. main"
+                value={ghBranch}
+                onChange={(e) => setGhBranch(e.target.value)}
+                className="w-full bg-[#F9F9F7] border-2 border-black rounded-none px-3 py-2 text-xs text-black focus:outline-none focus:border-[#FF4D00] placeholder-black/30 font-sans font-bold uppercase"
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="text-[10px] font-mono font-black text-black/60 uppercase block tracking-wider">Nombre del Archivo .json</label>
+              <input
+                type="text"
+                placeholder="ej. blocksi-data.json"
+                value={ghPath}
+                onChange={(e) => setGhPath(e.target.value)}
+                className="w-full bg-[#F9F9F7] border-2 border-black rounded-none px-3 py-2 text-xs text-black focus:outline-none focus:border-[#FF4D00] placeholder-black/30 font-sans font-bold uppercase"
+              />
+            </div>
+
+            <div className="md:col-span-2 space-y-1.5">
+              <label className="text-[10px] font-mono font-black text-black/60 uppercase block tracking-wider">
+                Personal Access Token de GitHub (PAT) <span className="text-[#FF4D00] font-black">*</span>
+              </label>
+              <input
+                type="password"
+                placeholder="ghp_xxxxxxxxxxxxxxxxxxxxxxxxxxx"
+                value={ghToken}
+                onChange={(e) => setGhToken(e.target.value)}
+                className="w-full bg-[#F9F9F7] border-2 border-black rounded-none px-3 py-2 text-xs text-black focus:outline-none focus:border-[#FF4D00] placeholder-black/35 font-mono"
+              />
+              <span className="text-[9px] font-mono text-black/45 uppercase block tracking-tight leading-tight">
+                Se almacena localmente y sirve para enviar comandos de guardado. Requiere permisos de escritura de contenidos ("contents: write").
+              </span>
+            </div>
+
+            {/* Sync Actions */}
+            <div className="md:col-span-2 flex flex-wrap gap-2.5 pt-3 border-t-2 border-black/10">
+              <button
+                type="button"
+                disabled={isGitHubSyncing || !ghToken || !ghUsername || !ghRepo}
+                onClick={async () => {
+                  setSyncMsg({ type: '', text: '' });
+                  const res = await pushToGitHub();
+                  if (res.success) {
+                    setSyncMsg({ type: 'success', text: '¡Guardado correctamente en tu repositorio git!' });
+                  } else {
+                    setSyncMsg({ type: 'error', text: `Error de push: ${res.error}` });
+                  }
+                }}
+                className={`py-2 px-4 rounded-none text-[10px] font-mono font-black uppercase tracking-wider transition-all border-2 border-black cursor-pointer shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5 ${
+                  isGitHubSyncing ? 'opacity-50 cursor-not-allowed' : 'bg-black text-white hover:bg-black/90'
+                }`}
+              >
+                {isGitHubSyncing ? 'Guardando...' : '💾 Guardar en GitHub (Push)'}
+              </button>
+
+              <button
+                type="button"
+                disabled={isGitHubSyncing || !ghToken || !ghUsername || !ghRepo}
+                onClick={async () => {
+                  setSyncMsg({ type: '', text: '' });
+                  if (confirm('¿Deseas descargar el contenido desde GitHub y sobreescribir los datos locales? Se perderán las modificaciones locales no sincronizadas.')) {
+                    const res = await pullFromGitHub();
+                    if (res.success) {
+                      setSyncMsg({ type: 'success', text: '¡Cargado correctamente! Recargando...' });
+                      setTimeout(() => window.location.reload(), 1000);
+                    } else {
+                      setSyncMsg({ type: 'error', text: `Error de pull: ${res.error}` });
+                    }
+                  }
+                }}
+                className={`py-2 px-4 rounded-none text-[10px] font-mono font-black uppercase tracking-wider transition-all border-2 border-black cursor-pointer shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5 ${
+                  isGitHubSyncing ? 'opacity-50 cursor-not-allowed' : 'bg-[#F9F9F7] text-black hover:bg-black/5'
+                }`}
+              >
+                {isGitHubSyncing ? 'Descargando...' : '📥 Descargar de GitHub (Pull)'}
+              </button>
+            </div>
+
+            {syncMsg.text && (
+              <div className={`md:col-span-2 p-3 font-mono text-[10px] font-black uppercase rounded-none border-2 border-black leading-tight ${
+                syncMsg.type === 'success' ? 'bg-[#10b981]/10 text-emerald-700' : 'bg-red-50 text-red-600'
+              }`}>
+                {syncMsg.text}
+              </div>
+            )}
+
+            {lastGitSyncTime && (
+              <div className="md:col-span-2 text-[9px] font-mono font-black text-black/55 uppercase tracking-wide">
+                Última Sincronización: {lastGitSyncTime}
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
 
         {/* Right side drawers: backups and taxonomy (4 cols) */}
         <div className="lg:col-span-4 space-y-6">

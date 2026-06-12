@@ -94,4 +94,10 @@ export interface AppSettings {
   fontSize: FontSize;
   notificationsEnabled: boolean;
   autoBackup: boolean;
+  githubUsername?: string;
+  githubRepo?: string;
+  githubBranch?: string;
+  githubToken?: string;
+  githubPath?: string;
+  githubEnabled?: boolean;
 }

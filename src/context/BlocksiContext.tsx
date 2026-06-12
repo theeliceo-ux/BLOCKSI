@@ -44,6 +44,15 @@ interface BlocksiContextProps {
   importJsonData: (json: string) => boolean;
   exportJsonData: () => string;
 
+  // Settings Actions
+  saveSettings: (settings: AppSettings) => void;
+
+  // GitHub Sync Actions
+  pushToGitHub: () => Promise<{ success: boolean; error?: string }>;
+  pullFromGitHub: () => Promise<{ success: boolean; error?: string }>;
+  isGitHubSyncing: boolean;
+  lastGitSyncTime: string | null;
+
   // Notification Actions
   triggerMockNotification: (title: string, body: string, linkedNoteId?: string, reminderId?: string) => void;
   dismissNotification: (id: string) => void;
@@ -84,8 +93,152 @@ export const BlocksiProvider: React.FC<{ children: React.ReactNode }> = ({ child
     setSettings(db.getSettings());
   };
 
+  const [isGitHubSyncing, setIsGitHubSyncing] = useState<boolean>(false);
+  const [lastGitSyncTime, setLastGitSyncTime] = useState<string | null>(null);
+
+  useEffect(() => {
+    const cachedTime = localStorage.getItem('blocksi_last_gitsync');
+    if (cachedTime) {
+      setLastGitSyncTime(cachedTime);
+    }
+  }, []);
+
+  const saveSettings = (newSettings: AppSettings) => {
+    db.saveSettings(newSettings);
+    reloadFromDB();
+  };
+
+  const pushToGitHub = async (): Promise<{ success: boolean; error?: string }> => {
+    const settingsNow = db.getSettings();
+    if (!settingsNow.githubEnabled || !settingsNow.githubUsername || !settingsNow.githubRepo || !settingsNow.githubToken) {
+      return { success: false, error: 'Sincronización GitHub deshabilitada o incompleta en configuración.' };
+    }
+
+    setIsGitHubSyncing(true);
+    try {
+      const { githubUsername, githubRepo, githubToken, githubBranch, githubPath } = settingsNow;
+      const branch = githubBranch || 'main';
+      const filePath = githubPath || 'blocksi-data.json';
+      
+      const dataStr = db.exportData();
+      // Safe unicode base64 converter in client-side environment
+      const base64Content = btoa(encodeURIComponent(dataStr).replace(/%([0-9A-F]{2})/g, (_, p1) => {
+        return String.fromCharCode(parseInt(p1, 16));
+      }));
+
+      let shaOfFile: string | undefined = undefined;
+      const getUrl = `https://api.github.com/repos/${githubUsername}/${githubRepo}/contents/${filePath}?ref=${branch}`;
+      const getRes = await fetch(getUrl, {
+        method: 'GET',
+        headers: {
+          'Authorization': `token ${githubToken}`,
+          'Accept': 'application/vnd.github.v3+json'
+        }
+      });
+
+      if (getRes.status === 200) {
+        const fileInfo = await getRes.json();
+        shaOfFile = fileInfo.sha;
+      }
+
+      const putUrl = `https://api.github.com/repos/${githubUsername}/${githubRepo}/contents/${filePath}`;
+      const putRes = await fetch(putUrl, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `token ${githubToken}`,
+          'Content-Type': 'application/json',
+          'Accept': 'application/vnd.github.v3+json'
+        },
+        body: JSON.stringify({
+          message: 'Sincronización BLOCKSI [skip ci]',
+          content: base64Content,
+          sha: shaOfFile,
+          branch: branch
+        })
+      });
+
+      if (!putRes.ok) {
+        const errorBody = await putRes.text();
+        console.error('API Error:', putRes.status, errorBody);
+        return { success: false, error: `GitHub API: ${putRes.status} ${putRes.statusText}` };
+      }
+
+      const nowStr = new Date().toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' }) + ' ' + new Date().toLocaleDateString('es-ES');
+      setLastGitSyncTime(nowStr);
+      localStorage.setItem('blocksi_last_gitsync', nowStr);
+      triggerMockNotification('☁️ GitHub Sincronizado', 'La base de datos se ha guardado en tu repositorio.');
+      return { success: true };
+    } catch (err: any) {
+      console.error('Error push:', err);
+      return { success: false, error: err.message || 'Error de conexión' };
+    } finally {
+      setIsGitHubSyncing(false);
+    }
+  };
+
+  const pullFromGitHub = async (): Promise<{ success: boolean; error?: string }> => {
+    const settingsNow = db.getSettings();
+    if (!settingsNow.githubEnabled || !settingsNow.githubUsername || !settingsNow.githubRepo || !settingsNow.githubToken) {
+      return { success: false, error: 'Sincronización GitHub deshabilitada o incompleta.' };
+    }
+
+    setIsGitHubSyncing(true);
+    try {
+      const { githubUsername, githubRepo, githubToken, githubBranch, githubPath } = settingsNow;
+      const branch = githubBranch || 'main';
+      const filePath = githubPath || 'blocksi-data.json';
+
+      const getUrl = `https://api.github.com/repos/${githubUsername}/${githubRepo}/contents/${filePath}?ref=${branch}`;
+      const getRes = await fetch(getUrl, {
+        method: 'GET',
+        headers: {
+          'Authorization': `token ${githubToken}`,
+          'Accept': 'application/vnd.github.v3+json'
+        }
+      });
+
+      if (!getRes.ok) {
+        if (getRes.status === 404) {
+          return { success: false, error: `No se encontró el archivo "${filePath}" en GitHub. Haz un primer Guardado (Push).` };
+        }
+        return { success: false, error: `Error conectar con GitHub: ${getRes.status}` };
+      }
+
+      const fileInfo = await getRes.json();
+      const base64Content = fileInfo.content.replace(/\s/g, '');
+      const decodedStr = decodeURIComponent(Array.prototype.map.call(atob(base64Content), (c: string) => {
+        return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+      }).join(''));
+
+      const success = db.importData(decodedStr);
+      if (success) {
+        reloadFromDB();
+        const nowStr = new Date().toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' }) + ' ' + new Date().toLocaleDateString('es-ES');
+        setLastGitSyncTime(nowStr);
+        localStorage.setItem('blocksi_last_gitsync', nowStr);
+        triggerMockNotification('☁️ Datos Github Cargados', 'Se sincronizó de manera exitosa desde el repositorio.');
+        return { success: true };
+      } else {
+        return { success: false, error: 'Fallo al parsear JSON importado.' };
+      }
+    } catch (err: any) {
+      console.error('Error pull:', err);
+      return { success: false, error: err.message || 'Error de conexión' };
+    } finally {
+      setIsGitHubSyncing(false);
+    }
+  };
+
   useEffect(() => {
     reloadFromDB();
+
+    // Pull on boot
+    const bootSettings = db.getSettings();
+    if (bootSettings.githubEnabled && bootSettings.githubUsername && bootSettings.githubRepo && bootSettings.githubToken) {
+      setTimeout(() => {
+        pullFromGitHub().catch((err) => console.log('Auto initial pull skipped:', err));
+      }, 800);
+    }
 
     // Setup an initial notification alert to welcome the user and demonstrate local alerts
     setTimeout(() => {
@@ -332,6 +485,12 @@ export const BlocksiProvider: React.FC<{ children: React.ReactNode }> = ({ child
         clearAllData,
         importJsonData,
         exportJsonData,
+        
+        saveSettings,
+        pushToGitHub,
+        pullFromGitHub,
+        isGitHubSyncing,
+        lastGitSyncTime,
         
         triggerMockNotification,
         dismissNotification,

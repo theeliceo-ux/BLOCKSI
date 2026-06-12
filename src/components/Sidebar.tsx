@@ -24,7 +24,16 @@ interface SidebarProps {
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({ isOpen, setIsOpen, onNewNoteClick }) => {
-  const { activeSection, setActiveSection, notes, reminders } = useBlocksi();
+  const { 
+    activeSection, 
+    setActiveSection, 
+    notes, 
+    reminders,
+    settings,
+    pushToGitHub,
+    isGitHubSyncing,
+    lastGitSyncTime
+  } = useBlocksi();
 
   const activeNotesCount = notes.filter((n) => n.status === 'active').length;
   const pendingRemindersCount = reminders.filter((r) => r.status === 'pending').length;
@@ -133,6 +142,35 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, setIsOpen, onNewNoteCl
             );
           })}
         </nav>
+
+        {/* GitHub Quick Sync footer */}
+        {settings.githubEnabled && settings.githubUsername && settings.githubRepo && settings.githubToken && (
+          <div className="p-3 border-t-2 border-black bg-[#f0fdf4] text-left">
+            <div className="flex items-center justify-between">
+              <span className="text-[9px] font-mono font-black text-[#15803d] uppercase tracking-wide">
+                ☁️ GITHUB CONECTADO
+              </span>
+              <span className={`w-2 h-2 rounded-none border border-black ${isGitHubSyncing ? 'bg-amber-400 animate-pulse' : 'bg-green-500'}`} />
+            </div>
+            
+            <button
+              type="button"
+              disabled={isGitHubSyncing}
+              onClick={async (e) => {
+                e.stopPropagation();
+                await pushToGitHub();
+              }}
+              className="mt-2 w-full py-1.5 px-2 border border-black bg-white hover:bg-black hover:text-white transition-all text-[9.5px] font-mono font-black uppercase text-center flex items-center justify-center gap-1.5 shadow-[1.5px_1.5px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5 cursor-pointer"
+            >
+              {isGitHubSyncing ? 'Sincronizando...' : '🔄 Sincronizar Repo'}
+            </button>
+            {lastGitSyncTime && (
+              <p className="text-[8px] font-mono text-black/55 mt-1.5 uppercase text-center leading-none">
+                Último: {lastGitSyncTime.split(' ')[0]}
+              </p>
+            )}
+          </div>
+        )}
 
         {/* Bottom Metadata Credit */}
         <div className="p-4 border-t-2 border-black text-center bg-[#F9F9F7]">

@@ -25,6 +25,12 @@ const DEFAULT_SETTINGS: AppSettings = {
   fontSize: 'md',
   notificationsEnabled: true,
   autoBackup: false,
+  githubUsername: '',
+  githubRepo: '',
+  githubBranch: 'main',
+  githubToken: '',
+  githubPath: 'blocksi-data.json',
+  githubEnabled: false,
 };
 
 // Seed Helper Dates
