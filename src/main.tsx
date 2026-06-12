@@ -12,7 +12,9 @@ createRoot(document.getElementById('root')!).render(
 // Register service worker for offline capabilities
 if ('serviceWorker' in navigator && !window.location.hostname.includes('localhost')) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/sw.js')
+    const baseUrl = (import.meta as any).env?.BASE_URL || './';
+    const swPath = `${baseUrl}sw.js`.replace(/\/+/g, '/');
+    navigator.serviceWorker.register(swPath)
       .then((reg) => {
         console.log('BLOCKSI PWA: Service Worker registrado con éxito.', reg.scope);
       })

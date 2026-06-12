@@ -1,8 +1,8 @@
 const CACHE_NAME = 'blocksi-v1';
 const ASSETS_TO_CACHE = [
-  '/',
-  '/index.html',
-  '/manifest.json'
+  './',
+  './index.html',
+  './manifest.json'
 ];
 
 self.addEventListener('install', (event) => {
@@ -64,7 +64,7 @@ self.addEventListener('fetch', (event) => {
         })
         .catch(() => {
           if (event.request.mode === 'navigate') {
-            return caches.match('/');
+            return caches.match('./index.html') || caches.match('./');
           }
           return new Response('Offline resource not available', { status: 503, statusText: 'Service Unavailable' });
         });
