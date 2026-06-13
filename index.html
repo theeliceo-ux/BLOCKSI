@@ -1,9 +1,24 @@
 <!doctype html>
-<html lang="en">
+<html lang="es">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>My Google AI Studio App</title>
+    <title>BLOCKSI - Organizador Personal</title>
+    
+    <!-- Evitar pantalla en blanco por falta de slash final en URLs de subcarpeta de GitHub Pages -->
+    <script>
+      (function() {
+        var path = window.location.pathname;
+        if (path && !path.endsWith('/') && !path.split('/').pop().includes('.')) {
+          window.location.replace(window.location.href + '/');
+        }
+      })();
+    </script>
+
+    <!-- PWA Manifest & Icons -->
+    <link rel="manifest" href="./manifest.json" />
+    <meta name="theme-color" content="#6366f1" />
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 128 128' fill='%236366f1'><rect width='128' height='128' rx='28'/><path d='M36 36h24v24H36zM68 36h24v24H68zM36 68h24v24H36z' fill='%23ffffff'/><rect x='68' y='68' width='24' height='24' rx='6' fill='%2338bdf8'/></svg>" />
   </head>
   <body>
     <div id="root"></div>
