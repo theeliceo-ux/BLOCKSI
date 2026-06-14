@@ -115,7 +115,13 @@ export const SettingsView: React.FC = () => {
       document.body.removeChild(link);
       triggerMockNotification('💾 Copia de Seguridad Descargada', 'Exportación JSON exitosa.');
     } catch {
-      alert('Error en exportación.');
+      setConfirmModal({
+        isOpen: true,
+        title: 'Error de Exportación',
+        message: 'Ocurrió un error al intentar exportar la base de datos de BLOCKSI.',
+        isAlertOnly: true,
+        onConfirm: () => {}
+      });
     }
   };
 
