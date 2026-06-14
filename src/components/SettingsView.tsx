@@ -52,6 +52,19 @@ export const SettingsView: React.FC = () => {
   const [ghToken, setGhToken] = useState(settings.githubToken || '');
   const [ghPath, setGhPath] = useState(settings.githubPath || 'blocksi-data.json');
   const [syncMsg, setSyncMsg] = useState<{ type: 'success' | 'error' | ''; text: string }>({ type: '', text: '' });
+  const [confirmModal, setConfirmModal] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    isAlertOnly?: boolean;
+    onConfirm: () => void | Promise<void>;
+  }>({
+    isOpen: false,
+    title: '',
+    message: '',
+    isAlertOnly: false,
+    onConfirm: () => {}
+  });
 
   // Taxonomy states
   const [newCatName, setNewCatName] = useState('');
@@ -121,25 +134,60 @@ export const SettingsView: React.FC = () => {
         const ok = importJsonData(text);
         if (ok) {
           triggerMockNotification('📂 Sincronización Exitosa', 'Base de datos importada correctamente.');
-          alert('¡Base de datos importada exitosamente! El contenido se ha actualizado.');
-          window.location.reload();
+          setConfirmModal({
+            isOpen: true,
+            title: '¡Importación Exitosa!',
+            message: 'La base de datos de BLOCKSI se ha cargado correctamente. La aplicación se reiniciará para reflejar los cambios.',
+            isAlertOnly: true,
+            onConfirm: () => {
+              window.location.reload();
+            }
+          });
         } else {
-          alert('Fallo al importar. Asegúrese de que es un archivo .json exportado de BLOCKSI.');
+          setConfirmModal({
+            isOpen: true,
+            title: 'Error de Importación',
+            message: 'Fallo al importar el archivo. Asegúrese de que es un archivo .json válido exportado de BLOCKSI.',
+            isAlertOnly: true,
+            onConfirm: () => {}
+          });
         }
       } catch {
-        alert('Error al leer el archivo seleccionado.');
+        setConfirmModal({
+          isOpen: true,
+          title: 'Error de Archivo',
+          message: 'Error al procesar el archivo seleccionado.',
+          isAlertOnly: true,
+          onConfirm: () => {}
+        });
       }
     };
     reader.readAsText(file);
   };
 
   const handleResetData = () => {
-    if (confirm('¿ESTÁS ABSOLUTAMENTE SEGURO? Esto eliminará definitivamente todas tus notas, categorías, recordatorios y registros guardados localmente.')) {
-      clearAllData();
-      triggerMockNotification('🚨 Base de Datos Reseteada', 'Se borraron todos los registros locales.');
-      alert('Se han borrado todos los datos. La aplicación regresará a su estado inicial.');
-      window.location.reload();
-    }
+    setConfirmModal({
+      isOpen: true,
+      title: '¿Confirmar Reseteo?',
+      message: '¿ESTÁS ABSOLUTAMENTE SEGURO? Esto eliminará definitivamente todas tus notas, categorías, recordatorios y registros guardados localmente.',
+      isAlertOnly: false,
+      onConfirm: () => {
+        clearAllData();
+        triggerMockNotification('🚨 Base de Datos Reseteada', 'Se borraron todos los registros locales.');
+        
+        setTimeout(() => {
+          setConfirmModal({
+            isOpen: true,
+            title: 'Datos Eliminados',
+            message: 'Se han borrado todos los datos locales. Clic para reiniciar la aplicación.',
+            isAlertOnly: true,
+            onConfirm: () => {
+              window.location.reload();
+            }
+          });
+        }, 300);
+      }
+    });
   };
 
   const handleAddCat = (e: React.FormEvent) => {
@@ -411,17 +459,23 @@ export const SettingsView: React.FC = () => {
               <button
                 type="button"
                 disabled={isGitHubSyncing || !ghToken || !ghUsername || !ghRepo}
-                onClick={async () => {
+                onClick={() => {
                   setSyncMsg({ type: '', text: '' });
-                  if (confirm('¿Deseas descargar el contenido desde GitHub y sobreescribir los datos locales? Se perderán las modificaciones locales no sincronizadas.')) {
-                    const res = await pullFromGitHub();
-                    if (res.success) {
-                      setSyncMsg({ type: 'success', text: '¡Cargado correctamente! Recargando...' });
-                      setTimeout(() => window.location.reload(), 1000);
-                    } else {
-                      setSyncMsg({ type: 'error', text: `Error de pull: ${res.error}` });
+                  setConfirmModal({
+                    isOpen: true,
+                    title: '¿Sincronizar desde GitHub?',
+                    message: '¿Deseas descargar el contenido desde GitHub y sobreescribir los datos locales? Se perderán las modificaciones locales no sincronizadas.',
+                    isAlertOnly: false,
+                    onConfirm: async () => {
+                      const res = await pullFromGitHub();
+                      if (res.success) {
+                        setSyncMsg({ type: 'success', text: '¡Cargado correctamente! Recargando...' });
+                        setTimeout(() => window.location.reload(), 1000);
+                      } else {
+                        setSyncMsg({ type: 'error', text: `Error de pull: ${res.error}` });
+                      }
                     }
-                  }
+                  });
                 }}
                 className={`py-2 px-4 rounded-none text-[10px] font-mono font-black uppercase tracking-wider transition-all border-2 border-black cursor-pointer shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5 ${
                   isGitHubSyncing ? 'opacity-50 cursor-not-allowed' : 'bg-[#F9F9F7] text-black hover:bg-black/5'
@@ -570,6 +624,42 @@ export const SettingsView: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {/* Reusable Neo-brutalist Confirm / Alert Modal */}
+      {confirmModal.isOpen && (
+        <div className="fixed inset-0 z-55 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4">
+          <div className="bg-white border-4 border-black p-6 max-w-sm w-full space-y-4 shadow-[8px_8px_0px_0px_rgba(0,0,0,1)]">
+            <div className="flex items-center gap-3 text-[#FF4D00]">
+              <Settings size={22} className="shrink-0" />
+              <h3 className="font-serif font-black text-base text-black uppercase tracking-tight">{confirmModal.title}</h3>
+            </div>
+            <p className="text-xs font-mono font-bold text-black/70 uppercase leading-relaxed">
+              {confirmModal.message}
+            </p>
+            <div className="flex justify-end gap-3 pt-2">
+              {!confirmModal.isAlertOnly && (
+                <button
+                  type="button"
+                  onClick={() => setConfirmModal((prev) => ({ ...prev, isOpen: false }))}
+                  className="px-4 py-2 border-2 border-black bg-white hover:bg-black/5 text-black font-mono font-black text-xs uppercase cursor-pointer"
+                >
+                  Cancelar
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={() => {
+                  confirmModal.onConfirm();
+                  setConfirmModal((prev) => ({ ...prev, isOpen: false }));
+                }}
+                className="px-4 py-2 border-2 border-black bg-black hover:bg-black/90 text-white font-mono font-black text-xs uppercase cursor-pointer shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5"
+              >
+                {confirmModal.isAlertOnly ? 'Entendido' : 'Confirmar'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

@@ -14,6 +14,17 @@ export const RecycleBinView: React.FC = () => {
   } = useBlocksi();
 
   const [activeTab, setActiveTab] = useState<'notes' | 'reminders'>('notes');
+  const [confirmModal, setConfirmModal] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    onConfirm: () => void;
+  }>({
+    isOpen: false,
+    title: '',
+    message: '',
+    onConfirm: () => {}
+  });
 
   const trashedNotes = notes.filter((n) => n.status === 'trash');
   const trashedReminders = reminders.filter((r) => r.status === 'trash');
@@ -24,10 +35,15 @@ export const RecycleBinView: React.FC = () => {
   };
 
   const handlePurgeNote = (id: string, title: string) => {
-    if (confirm(`¿Estás seguro de que deseas eliminar permanentemente la nota "${title}"? Esta acción es irreversible.`)) {
-      scrubNote(id);
-      triggerMockNotification('🗑️ Purga Completada', `"${title}" ha sido eliminada para siempre.`);
-    }
+    setConfirmModal({
+      isOpen: true,
+      title: '¿Eliminar Nota Permanente?',
+      message: `¿Estás seguro de que deseas eliminar permanentemente la nota "${title}"? Esta acción es irreversible y no se podrá recuperar.`,
+      onConfirm: () => {
+        scrubNote(id);
+        triggerMockNotification('🗑️ Purga Completada', `"${title}" ha sido eliminada para siempre.`);
+      }
+    });
   };
 
   const handleRestoreReminder = (id: string, title: string) => {
@@ -36,27 +52,42 @@ export const RecycleBinView: React.FC = () => {
   };
 
   const handlePurgeReminder = (id: string, title: string) => {
-    if (confirm(`¿Eliminar definitivamente el recordatorio "${title}"? No se podrá recuperar.`)) {
-      scrubReminder(id);
-      triggerMockNotification('🗑️ Purga Completada', `Recordatorio eliminado de forma irreversible.`);
-    }
+    setConfirmModal({
+      isOpen: true,
+      title: '¿Eliminar Recordatorio?',
+      message: `¿Estás seguro de que deseas eliminar permanentemente el recordatorio "${title}"? Esta acción es irreversible.`,
+      onConfirm: () => {
+        scrubReminder(id);
+        triggerMockNotification('🗑️ Purga Completada', `Recordatorio eliminado de forma irreversible.`);
+      }
+    });
   };
 
   // Helper empty recycle bins helpers
   const handleEmptyAllNotes = () => {
     if (trashedNotes.length === 0) return;
-    if (confirm('¿Eliminar de forma definitiva TODAS las notas de la papelera?')) {
-      trashedNotes.forEach((n) => scrubNote(n.id));
-      triggerMockNotification('🗑️ Papelera Vacía', 'Se purgaron todas las notas de la papelera.');
-    }
+    setConfirmModal({
+      isOpen: true,
+      title: '¿Vaciar Notas de Papelera?',
+      message: '¿Estás seguro de eliminar de forma definitiva TODAS las notas de la papelera? Esta operación no se puede revertir.',
+      onConfirm: () => {
+        trashedNotes.forEach((n) => scrubNote(n.id));
+        triggerMockNotification('🗑️ Papelera Vacía', 'Se purgaron todas las notas de la papelera.');
+      }
+    });
   };
 
   const handleEmptyAllReminders = () => {
     if (trashedReminders.length === 0) return;
-    if (confirm('¿Deseas purgar para siempre todos los recordatorios de la papelera?')) {
-      trashedReminders.forEach((r) => scrubReminder(r.id));
-      triggerMockNotification('🗑️ Papelera Vacía', 'Se vaciaron los recordatorios eliminados.');
-    }
+    setConfirmModal({
+      isOpen: true,
+      title: '¿Vaciar Recordatorios?',
+      message: '¿Deseas purgar para siempre todos los recordatorios traslados a la papelera?',
+      onConfirm: () => {
+        trashedReminders.forEach((r) => scrubReminder(r.id));
+        triggerMockNotification('🗑️ Papelera Vacía', 'Se vaciaron los recordatorios eliminados.');
+      }
+    });
   };
 
   return (
@@ -222,6 +253,40 @@ export const RecycleBinView: React.FC = () => {
           </div>
         )}
       </div>
+
+      {/* Neo-brutalist custom confirm modal */}
+      {confirmModal.isOpen && (
+        <div className="fixed inset-0 z-55 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4">
+          <div className="bg-white border-4 border-black p-6 max-w-sm w-full space-y-4 shadow-[8px_8px_0px_0px_rgba(0,0,0,1)]">
+            <div className="flex items-center gap-3 text-[#FF4D00]">
+              <AlertTriangle size={24} className="shrink-0" />
+              <h3 className="font-serif font-black text-base text-black uppercase tracking-tight">{confirmModal.title}</h3>
+            </div>
+            <p className="text-xs font-mono font-bold text-black/70 uppercase leading-relaxed">
+              {confirmModal.message}
+            </p>
+            <div className="flex justify-end gap-3 pt-2">
+              <button
+                type="button"
+                onClick={() => setConfirmModal((prev) => ({ ...prev, isOpen: false }))}
+                className="px-4 py-2 border-2 border-black bg-white hover:bg-black/5 text-black font-mono font-black text-xs uppercase cursor-pointer"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  confirmModal.onConfirm();
+                  setConfirmModal((prev) => ({ ...prev, isOpen: false }));
+                }}
+                className="px-4 py-2 border-2 border-black bg-red-600 hover:bg-red-700 text-white font-mono font-black text-xs uppercase cursor-pointer shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5"
+              >
+                Confirmar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

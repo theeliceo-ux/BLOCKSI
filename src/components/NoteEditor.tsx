@@ -73,6 +73,7 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({ noteId, onClose }) => {
   const [showHistory, setShowHistory] = useState(false);
   const [showAddCategory, setShowAddCategory] = useState(false);
   const [showAddTag, setShowAddTag] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   // Form states
   const [newCatName, setNewCatName] = useState('');
@@ -281,11 +282,15 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({ noteId, onClose }) => {
 
   const handleDelete = () => {
     if (!isNew && currentNote) {
-      if (confirm('¿Trasladar esta nota a la papelera de reciclaje?')) {
-        removeNote(currentNote.id);
-        onClose();
-      }
+      setShowDeleteConfirm(true);
     } else {
+      onClose();
+    }
+  };
+
+  const handleConfirmDelete = () => {
+    if (currentNote) {
+      removeNote(currentNote.id);
       onClose();
     }
   };
@@ -751,6 +756,40 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({ noteId, onClose }) => {
           </div>
         )}
       </div>
+      
+      {/* Neo-brutalist Confirm Delete dialog */}
+      {showDeleteConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4">
+          <div className="bg-white border-4 border-black p-6 max-w-sm w-full space-y-4 shadow-[8px_8px_0px_0px_rgba(0,0,0,1)]">
+            <div className="flex items-center gap-3 text-[#FF4D00]">
+              <Trash2 size={24} className="shrink-0" />
+              <h3 className="font-serif font-black text-base text-black uppercase tracking-tight">¿Eliminar Nota?</h3>
+            </div>
+            <p className="text-xs font-mono font-bold text-black/70 uppercase leading-relaxed">
+              ¿Deseas trasladar esta nota a la papelera de reciclaje? Podrás recuperarla más tarde si lo deseas.
+            </p>
+            <div className="flex justify-end gap-3 pt-2">
+              <button
+                type="button"
+                onClick={() => setShowDeleteConfirm(false)}
+                className="px-4 py-2 border-2 border-black bg-white hover:bg-black/5 text-black font-mono font-black text-xs uppercase cursor-pointer"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowDeleteConfirm(false);
+                  handleConfirmDelete();
+                }}
+                className="px-4 py-2 border-2 border-black bg-red-600 hover:bg-red-700 text-white font-mono font-black text-xs uppercase cursor-pointer shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5"
+              >
+                Eliminar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
