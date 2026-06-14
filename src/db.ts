@@ -336,6 +336,7 @@ const KEYS = {
 
 // Database class to handle all queries synchronously with cache sync
 class BlocksiDB {
+  public activeUser: string | null = null;
   private cache = {
     notes: [] as Note[],
     reminders: [] as Reminder[],
@@ -350,79 +351,184 @@ class BlocksiDB {
     this.init();
   }
 
+  // Account system actions
+  getAccounts(): Array<{ username: string; passwordHash: string; securityAnswer: string }> {
+    try {
+      const saved = localStorage.getItem('blocksi_accounts');
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  }
+
+  saveAccounts(accounts: Array<{ username: string; passwordHash: string; securityAnswer: string }>) {
+    localStorage.setItem('blocksi_accounts', JSON.stringify(accounts));
+  }
+
+  registerUser(username: string, passwordHash: string, securityAnswer: string): boolean {
+    const accs = this.getAccounts();
+    const normalized = username.toLowerCase().trim();
+    if (accs.some((a) => a.username === normalized)) {
+      return false;
+    }
+    accs.push({ username: normalized, passwordHash, securityAnswer });
+    this.saveAccounts(accs);
+    return true;
+  }
+
+  loginUser(username: string, passwordHash: string): boolean {
+    const accs = this.getAccounts();
+    const normalized = username.toLowerCase().trim();
+    const user = accs.find((a) => a.username === normalized);
+    if (!user) return false;
+    return user.passwordHash === passwordHash;
+  }
+
+  recoverPassword(username: string, securityAnswer: string): string | null {
+    const accs = this.getAccounts();
+    const normalized = username.toLowerCase().trim();
+    const user = accs.find((a) => a.username === normalized);
+    if (!user) return null;
+    if (user.securityAnswer.toLowerCase().trim() === securityAnswer.toLowerCase().trim()) {
+      return user.passwordHash;
+    }
+    return null;
+  }
+
+  getUserPassword(username: string): string {
+    const accs = this.getAccounts();
+    const user = accs.find((a) => a.username === username.toLowerCase().trim());
+    return user ? user.passwordHash : '';
+  }
+
+  getUserSecurityAnswer(username: string): string {
+    const accs = this.getAccounts();
+    const user = accs.find((a) => a.username === username.toLowerCase().trim());
+    return user ? user.securityAnswer : '';
+  }
+
+  logout() {
+    this.activeUser = null;
+    localStorage.removeItem('blocksi_active_user');
+    this.cache = {
+      notes: [],
+      reminders: [],
+      versions: [],
+      history: [],
+      categories: [...DEFAULT_CATEGORIES],
+      tags: [...DEFAULT_TAGS],
+      settings: { ...DEFAULT_SETTINGS },
+    };
+  }
+
+  loadUser(username: string) {
+    this.activeUser = username.toLowerCase().trim();
+    localStorage.setItem('blocksi_active_user', this.activeUser);
+
+    const userKeys = {
+      NOTES: `blocksi_notes_${this.activeUser}`,
+      REMINDERS: `blocksi_reminders_${this.activeUser}`,
+      VERSIONS: `blocksi_versions_${this.activeUser}`,
+      HISTORY: `blocksi_history_${this.activeUser}`,
+      CATEGORIES: `blocksi_categories_${this.activeUser}`,
+      TAGS: `blocksi_tags_${this.activeUser}`,
+      SETTINGS: `blocksi_settings_${this.activeUser}`,
+    };
+
+    // Load settings
+    const savedSettings = localStorage.getItem(userKeys.SETTINGS);
+    if (savedSettings) {
+      this.cache.settings = { ...DEFAULT_SETTINGS, ...JSON.parse(savedSettings) };
+    } else {
+      const initialSettings = {
+        ...DEFAULT_SETTINGS,
+        githubPath: `blocksi-data-${this.activeUser}.json`,
+      };
+      localStorage.setItem(userKeys.SETTINGS, JSON.stringify(initialSettings));
+      this.cache.settings = initialSettings;
+    }
+
+    // Load categories
+    const savedCats = localStorage.getItem(userKeys.CATEGORIES);
+    if (savedCats) {
+      this.cache.categories = JSON.parse(savedCats);
+    } else {
+      localStorage.setItem(userKeys.CATEGORIES, JSON.stringify(DEFAULT_CATEGORIES));
+      this.cache.categories = [...DEFAULT_CATEGORIES];
+    }
+
+    // Load tags
+    const savedTags = localStorage.getItem(userKeys.TAGS);
+    if (savedTags) {
+      this.cache.tags = JSON.parse(savedTags);
+    } else {
+      localStorage.setItem(userKeys.TAGS, JSON.stringify(DEFAULT_TAGS));
+      this.cache.tags = [...DEFAULT_TAGS];
+    }
+
+    // Load notes
+    const savedNotes = localStorage.getItem(userKeys.NOTES);
+    if (savedNotes) {
+      this.cache.notes = JSON.parse(savedNotes);
+    } else {
+      localStorage.setItem(userKeys.NOTES, JSON.stringify(SEED_NOTES));
+      this.cache.notes = [...SEED_NOTES];
+    }
+
+    // Load versions
+    const savedVers = localStorage.getItem(userKeys.VERSIONS);
+    if (savedVers) {
+      this.cache.versions = JSON.parse(savedVers);
+    } else {
+      localStorage.setItem(userKeys.VERSIONS, JSON.stringify(SEED_VERSIONS));
+      this.cache.versions = [...SEED_VERSIONS];
+    }
+
+    // Load reminders
+    const savedRems = localStorage.getItem(userKeys.REMINDERS);
+    if (savedRems) {
+      this.cache.reminders = JSON.parse(savedRems);
+    } else {
+      localStorage.setItem(userKeys.REMINDERS, JSON.stringify(SEED_REMINDERS));
+      this.cache.reminders = [...SEED_REMINDERS];
+    }
+
+    // Load history
+    const savedHist = localStorage.getItem(userKeys.HISTORY);
+    if (savedHist) {
+      this.cache.history = JSON.parse(savedHist);
+    } else {
+      localStorage.setItem(userKeys.HISTORY, JSON.stringify(SEED_HISTORY));
+      this.cache.history = [...SEED_HISTORY];
+    }
+  }
+
   private init() {
     try {
-      // 1. Settings
-      const savedSettings = localStorage.getItem(KEYS.SETTINGS);
-      if (savedSettings) {
-        this.cache.settings = { ...DEFAULT_SETTINGS, ...JSON.parse(savedSettings) };
+      const active = localStorage.getItem('blocksi_active_user');
+      if (active) {
+        this.loadUser(active);
       } else {
-        localStorage.setItem(KEYS.SETTINGS, JSON.stringify(DEFAULT_SETTINGS));
-        this.cache.settings = DEFAULT_SETTINGS;
-      }
-
-      // 2. Categories
-      const savedCats = localStorage.getItem(KEYS.CATEGORIES);
-      if (savedCats) {
-        this.cache.categories = JSON.parse(savedCats);
-      } else {
-        localStorage.setItem(KEYS.CATEGORIES, JSON.stringify(DEFAULT_CATEGORIES));
-        this.cache.categories = DEFAULT_CATEGORIES;
-      }
-
-      // 3. Tags
-      const savedTags = localStorage.getItem(KEYS.TAGS);
-      if (savedTags) {
-        this.cache.tags = JSON.parse(savedTags);
-      } else {
-        localStorage.setItem(KEYS.TAGS, JSON.stringify(DEFAULT_TAGS));
-        this.cache.tags = DEFAULT_TAGS;
-      }
-
-      // 4. Notes
-      const savedNotes = localStorage.getItem(KEYS.NOTES);
-      if (savedNotes) {
-        this.cache.notes = JSON.parse(savedNotes);
-      } else {
-        localStorage.setItem(KEYS.NOTES, JSON.stringify(SEED_NOTES));
-        this.cache.notes = SEED_NOTES;
-      }
-
-      // 5. Versions
-      const savedVers = localStorage.getItem(KEYS.VERSIONS);
-      if (savedVers) {
-        this.cache.versions = JSON.parse(savedVers);
-      } else {
-        localStorage.setItem(KEYS.VERSIONS, JSON.stringify(SEED_VERSIONS));
-        this.cache.versions = SEED_VERSIONS;
-      }
-
-      // 6. Reminders
-      const savedRems = localStorage.getItem(KEYS.REMINDERS);
-      if (savedRems) {
-        this.cache.reminders = JSON.parse(savedRems);
-      } else {
-        localStorage.setItem(KEYS.REMINDERS, JSON.stringify(SEED_REMINDERS));
-        this.cache.reminders = SEED_REMINDERS;
-      }
-
-      // 7. History
-      const savedHist = localStorage.getItem(KEYS.HISTORY);
-      if (savedHist) {
-        this.cache.history = JSON.parse(savedHist);
-      } else {
-        localStorage.setItem(KEYS.HISTORY, JSON.stringify(SEED_HISTORY));
-        this.cache.history = SEED_HISTORY;
+        this.cache = {
+          notes: [],
+          reminders: [],
+          versions: [],
+          history: [],
+          categories: [...DEFAULT_CATEGORIES],
+          tags: [...DEFAULT_TAGS],
+          settings: { ...DEFAULT_SETTINGS },
+        };
       }
     } catch (e) {
       console.error('Storage initialization failed. Carrying forward with in-memory fallback.', e);
-      // Fallback is in place due to default values set in fields and seed lists
     }
   }
 
   private persist(key: string, data: any) {
+    if (!this.activeUser) return;
+    const userKey = `${key}_${this.activeUser}`;
     try {
-      localStorage.setItem(key, JSON.stringify(data));
+      localStorage.setItem(userKey, JSON.stringify(data));
     } catch (e) {
       console.warn('Persist failed, local quota full or private browser mode:', e);
     }
@@ -705,13 +811,16 @@ class BlocksiDB {
     this.cache.tags = DEFAULT_TAGS;
     this.cache.settings = DEFAULT_SETTINGS;
 
-    localStorage.removeItem(KEYS.NOTES);
-    localStorage.removeItem(KEYS.REMINDERS);
-    localStorage.removeItem(KEYS.VERSIONS);
-    localStorage.removeItem(KEYS.HISTORY);
-    localStorage.removeItem(KEYS.CATEGORIES);
-    localStorage.removeItem(KEYS.TAGS);
-    localStorage.removeItem(KEYS.SETTINGS);
+    if (this.activeUser) {
+      const activeSuffix = `_${this.activeUser}`;
+      localStorage.removeItem(KEYS.NOTES + activeSuffix);
+      localStorage.removeItem(KEYS.REMINDERS + activeSuffix);
+      localStorage.removeItem(KEYS.VERSIONS + activeSuffix);
+      localStorage.removeItem(KEYS.HISTORY + activeSuffix);
+      localStorage.removeItem(KEYS.CATEGORIES + activeSuffix);
+      localStorage.removeItem(KEYS.TAGS + activeSuffix);
+      localStorage.removeItem(KEYS.SETTINGS + activeSuffix);
+    }
 
     this.logHistory('db_cleared', 'Base de datos local completamente reiniciada a valores predeterminados.');
   }
@@ -727,6 +836,9 @@ class BlocksiDB {
       settings: this.cache.settings,
       exportedAt: new Date().toISOString(),
       app: 'BLOCKSI',
+      username: this.activeUser,
+      password: this.activeUser ? this.getUserPassword(this.activeUser) : '',
+      securityAnswer: this.activeUser ? this.getUserSecurityAnswer(this.activeUser) : ''
     };
     return JSON.stringify(dump, null, 2);
   }
@@ -753,6 +865,19 @@ class BlocksiDB {
       this.persist(KEYS.CATEGORIES, this.cache.categories);
       this.persist(KEYS.TAGS, this.cache.tags);
       this.persist(KEYS.SETTINGS, this.cache.settings);
+
+      // Restore credentials to local registry if they exist inside the imported file
+      if (dump.username && dump.password && dump.securityAnswer) {
+        const accs = this.getAccounts();
+        const norm = dump.username.toLowerCase().trim();
+        const existingIdx = accs.findIndex((a) => a.username === norm);
+        if (existingIdx >= 0) {
+          accs[existingIdx] = { username: norm, passwordHash: dump.password, securityAnswer: dump.securityAnswer };
+        } else {
+          accs.push({ username: norm, passwordHash: dump.password, securityAnswer: dump.securityAnswer });
+        }
+        this.saveAccounts(accs);
+      }
 
       this.logHistory('db_imported', 'Copia de seguridad local importada exitosamente.');
       return true;

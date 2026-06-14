@@ -14,7 +14,6 @@ import {
   Trash2,
   CheckCircle,
   AlertOctagon,
-  Languages,
   FolderSync
 } from 'lucide-react';
 
@@ -42,7 +41,6 @@ export const SettingsView: React.FC = () => {
   const [theme, setTheme] = useState(settings.theme);
   const [fontSize, setFontSize] = useState(settings.fontSize);
   const [notifications, setNotifications] = useState(settings.notificationsEnabled);
-  const [language, setLanguage] = useState(settings.language);
 
   // GitHub Sync states
   const [ghEnabled, setGhEnabled] = useState(settings.githubEnabled || false);
@@ -50,7 +48,7 @@ export const SettingsView: React.FC = () => {
   const [ghRepo, setGhRepo] = useState(settings.githubRepo || '');
   const [ghBranch, setGhBranch] = useState(settings.githubBranch || 'main');
   const [ghToken, setGhToken] = useState(settings.githubToken || '');
-  const [ghPath, setGhPath] = useState(settings.githubPath || 'blocksi-data.json');
+  const [ghPath, setGhPath] = useState(settings.githubPath || `blocksi-data-${settings.githubUsername || 'user'}.json`);
   const [syncMsg, setSyncMsg] = useState<{ type: 'success' | 'error' | ''; text: string }>({ type: '', text: '' });
   const [confirmModal, setConfirmModal] = useState<{
     isOpen: boolean;
@@ -76,7 +74,7 @@ export const SettingsView: React.FC = () => {
   const handleApplySettings = () => {
     saveSettings({
       theme,
-      language,
+      language: 'es',
       fontSize,
       notificationsEnabled: notifications,
       autoBackup: settings.autoBackup,
@@ -292,32 +290,7 @@ export const SettingsView: React.FC = () => {
               </div>
             </div>
 
-            {/* Language Selection */}
-            <div className="space-y-2">
-              <label className="text-[10px] font-mono font-black text-black/60 uppercase block tracking-wider">Idioma de Interfaz</label>
-              <div className="flex bg-[#F9F9F7] border-2 border-black rounded-none overflow-hidden p-0.5 max-w-xs text-xs">
-                <button
-                  type="button"
-                  onClick={() => setLanguage('es')}
-                  className={`flex-1 py-1.5 text-[10px] font-mono font-black uppercase rounded-none flex items-center justify-center gap-1 transition-all cursor-pointer ${
-                    language === 'es' ? 'bg-black text-white' : 'text-black/55 hover:bg-black/5'
-                  }`}
-                >
-                  <Languages size={11} />
-                  Español (ES)
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setLanguage('en')}
-                  className={`flex-1 py-1.5 text-[10px] font-mono font-black uppercase rounded-none flex items-center justify-center gap-1 transition-all cursor-pointer ${
-                    language === 'en' ? 'bg-black text-white' : 'text-black/55 hover:bg-black/5'
-                  }`}
-                >
-                  <Languages size={11} />
-                  English (EN)
-                </button>
-              </div>
-            </div>
+
 
             {/* Notifications toggles */}
             <div className="flex items-center justify-between p-4 bg-[#F9F9F7] rounded-none border-2 border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]">

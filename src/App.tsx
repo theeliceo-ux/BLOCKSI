@@ -11,6 +11,7 @@ import { HistoryTimeline } from './components/HistoryTimeline';
 import { StatsDashboard } from './components/StatsDashboard';
 import { SettingsView } from './components/SettingsView';
 import { RecycleBinView } from './components/RecycleBinView';
+import { AuthView } from './components/AuthView';
 import { db } from './db';
 
 import {
@@ -34,7 +35,8 @@ const AppContent: React.FC = () => {
     dismissNotification,
     postponeReminder,
     editReminder,
-    reminders
+    reminders,
+    activeUser
   } = useBlocksi();
 
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -42,6 +44,7 @@ const AppContent: React.FC = () => {
 
   // Sync theme configurations on startup
   useEffect(() => {
+    if (!activeUser) return;
     const saved = db.getSettings();
     const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
     const isDark = saved.theme === 'dark' || (saved.theme === 'auto' && prefersDark);
@@ -51,10 +54,11 @@ const AppContent: React.FC = () => {
     } else {
       document.documentElement.classList.remove('dark');
     }
-  }, [settingsChangedToggle()]);
+  }, [activeUser, settingsChangedToggle()]);
 
   // Small helper to evaluate changes
   function settingsChangedToggle() {
+    if (!activeUser) return 'auto';
     const saved = db.getSettings();
     return saved.theme;
   }
@@ -120,6 +124,10 @@ const AppContent: React.FC = () => {
     postponeReminder(reminderId, mins);
     dismissNotification(alertId);
   };
+
+  if (!activeUser) {
+    return <AuthView />;
+  }
 
   return (
     <div className="flex h-screen bg-[#F9F9F7] text-[#1A1A1A] font-sans overflow-hidden">

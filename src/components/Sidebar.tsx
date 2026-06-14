@@ -32,7 +32,9 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, setIsOpen, onNewNoteCl
     settings,
     pushToGitHub,
     isGitHubSyncing,
-    lastGitSyncTime
+    lastGitSyncTime,
+    activeUser,
+    logoutUser
   } = useBlocksi();
 
   const activeNotesCount = notes.filter((n) => n.status === 'active').length;
@@ -172,14 +174,28 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, setIsOpen, onNewNoteCl
           </div>
         )}
 
-        {/* Bottom Metadata Credit */}
-        <div className="p-4 border-t-2 border-black text-center bg-[#F9F9F7]">
-          <p className="text-xs font-mono text-black font-black uppercase tracking-wider">
-            BLOCKSI v1.0.0
-          </p>
-          <p className="text-[9px] font-mono text-black/60 mt-0.5 uppercase tracking-tight">
-            Persistencia Local Offline
-          </p>
+        {/* Bottom User Display & Cerrar Sesión Panel */}
+        <div className="p-3 border-t-2 border-black bg-[#F9F9F7] text-left">
+          <div className="flex items-center gap-2 mb-2 px-1">
+            <div className="w-6 h-6 rounded-none bg-black text-white border border-black font-mono font-black text-xs uppercase flex items-center justify-center select-none">
+              {activeUser ? activeUser.charAt(0).toUpperCase() : '?'}
+            </div>
+            <span className="text-[10px] font-mono font-black text-black uppercase truncate max-w-[120px] select-none">
+              {activeUser || 'INVITADO'}
+            </span>
+            <button
+              onClick={() => logoutUser()}
+              className="ml-auto px-1.5 py-0.5 border border-black bg-white hover:bg-[#FF4D00] hover:text-white text-black font-mono font-black text-[8px] uppercase tracking-wider cursor-pointer"
+              title="Cerrar Sesión"
+            >
+              SALIR
+            </button>
+          </div>
+          <div className="text-center pt-1 border-t border-black/10">
+            <p className="text-[8px] font-mono text-black/55 uppercase tracking-tight select-none">
+              BLOCKSI v1.0.0 • Offline Ready
+            </p>
+          </div>
         </div>
       </aside>
     </>

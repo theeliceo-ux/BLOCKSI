@@ -55,7 +55,8 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({ noteId, onClose }) => {
     revertToVersion,
     addCategory,
     addNewTag,
-    triggerMockNotification
+    triggerMockNotification,
+    settings
   } = useBlocksi();
 
   const isNew = noteId === 'new';
@@ -667,7 +668,13 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({ noteId, onClose }) => {
             {/* Editing Box vs Markdown Previsualization Rendering */}
             <div className="flex-1 flex flex-col relative min-h-[220px]">
               {isPreview ? (
-                <div className="flex-1 bg-[#F9F9F7] border-2 border-black p-4 md:p-5 rounded-none overflow-y-auto select-text text-black">
+                <div className={`flex-1 bg-[#F9F9F7] border-2 border-black p-4 md:p-5 rounded-none overflow-y-auto select-text text-black ${
+                  settings.fontSize === 'sm' ? 'text-xs' :
+                  settings.fontSize === 'md' ? 'text-sm' :
+                  settings.fontSize === 'lg' ? 'text-base' :
+                  settings.fontSize === 'xl' ? 'text-xl' :
+                  'text-sm'
+                }`}>
                   {renderParsedMarkdown()}
                 </div>
               ) : (
@@ -676,7 +683,13 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({ noteId, onClose }) => {
                   value={content}
                   onChange={handleContentChange}
                   placeholder="Comienza a escribir tus notas, tareas o apuntes diarios aquí (formato markdown completo interactivo)..."
-                  className="w-full flex-grow bg-transparent text-black placeholder-black/35 resize-none focus:outline-none text-sm md:text-base leading-relaxed p-2 font-mono"
+                  className={`w-full flex-grow bg-transparent text-black placeholder-black/35 resize-none focus:outline-none leading-relaxed p-2 font-mono ${
+                    settings.fontSize === 'sm' ? 'text-xs' :
+                    settings.fontSize === 'md' ? 'text-sm' :
+                    settings.fontSize === 'lg' ? 'text-base' :
+                    settings.fontSize === 'xl' ? 'text-lg md:text-xl' :
+                    'text-sm'
+                  }`}
                   style={{ minHeight: '300px' }}
                 />
               )}

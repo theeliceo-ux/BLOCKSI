@@ -57,6 +57,14 @@ interface BlocksiContextProps {
   triggerMockNotification: (title: string, body: string, linkedNoteId?: string, reminderId?: string) => void;
   dismissNotification: (id: string) => void;
   postponeReminder: (reminderId: string, minutes: number) => void;
+
+  // User Actions
+  activeUser: string | null;
+  registerUser: (username: string, passwordHash: string, securityAnswer: string) => boolean;
+  loginUser: (username: string, passwordHash: string) => boolean;
+  recoverPassword: (username: string, securityAnswer: string) => string | null;
+  logoutUser: () => void;
+  connectGitHubSyncAccount: (username: string, passwordHash: string, ghUsername: string, ghRepo: string, ghBranch: string, ghToken: string) => Promise<{ success: boolean; error?: string }>;
 }
 
 export interface AppNotification {
@@ -71,6 +79,7 @@ export interface AppNotification {
 const BlocksiContext = createContext<BlocksiContextProps | undefined>(undefined);
 
 export const BlocksiProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const [activeUser, setActiveUser] = useState<string | null>(localStorage.getItem('blocksi_active_user'));
   const [notes, setNotes] = useState<Note[]>([]);
   const [reminders, setReminders] = useState<Reminder[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
@@ -85,6 +94,7 @@ export const BlocksiProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
   // Synchronize state with Local Storage via db instance
   const reloadFromDB = () => {
+    if (!localStorage.getItem('blocksi_active_user')) return;
     setNotes([...db.getNotes()]);
     setReminders([...db.getReminders()]);
     setCategories([...db.getCategories()]);
@@ -102,6 +112,122 @@ export const BlocksiProvider: React.FC<{ children: React.ReactNode }> = ({ child
       setLastGitSyncTime(cachedTime);
     }
   }, []);
+
+  const registerUser = (username: string, passwordHash: string, securityAnswer: string): boolean => {
+    const ok = db.registerUser(username, passwordHash, securityAnswer);
+    if (ok) {
+      db.loadUser(username);
+      setActiveUser(username);
+    }
+    return ok;
+  };
+
+  const loginUser = (username: string, passwordHash: string): boolean => {
+    const ok = db.loginUser(username, passwordHash);
+    if (ok) {
+      db.loadUser(username);
+      setActiveUser(username);
+    }
+    return ok;
+  };
+
+  const recoverPassword = (username: string, securityAnswer: string): string | null => {
+    return db.recoverPassword(username, securityAnswer);
+  };
+
+  const logoutUser = () => {
+    db.logout();
+    setActiveUser(null);
+    setNotes([]);
+    setReminders([]);
+    setCategories([]);
+    setTags([]);
+    setHistory([]);
+  };
+
+  const connectGitHubSyncAccount = async (
+    username: string,
+    passwordHash: string,
+    ghUsername: string,
+    ghRepo: string,
+    ghBranch: string,
+    ghToken: string
+  ): Promise<{ success: boolean; error?: string }> => {
+    setIsGitHubSyncing(true);
+    try {
+      const branch = ghBranch || 'main';
+      const filePath = `blocksi-data-${username.toLowerCase().trim()}.json`;
+      const getUrl = `https://api.github.com/repos/${ghUsername}/${ghRepo}/contents/${filePath}?ref=${branch}`;
+      
+      const getRes = await fetch(getUrl, {
+        method: 'GET',
+        headers: {
+          'Authorization': `token ${ghToken}`,
+          'Accept': 'application/vnd.github.v3+json'
+        }
+      });
+
+      if (!getRes.ok) {
+        if (getRes.status === 404) {
+          return { success: false, error: `No se encontró el archivo "${filePath}" en GitHub para este usuario.` };
+        }
+        return { success: false, error: `Error conectando con GitHub: código ${getRes.status}` };
+      }
+
+      const fileInfo = await getRes.json();
+      const base64Content = fileInfo.content.replace(/\s/g, '');
+      const decodedStr = decodeURIComponent(Array.prototype.map.call(atob(base64Content), (c: string) => {
+        return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+      }).join(''));
+
+      const parsedJSON = JSON.parse(decodedStr);
+      if (parsedJSON.app !== 'BLOCKSI') {
+        return { success: false, error: 'El archivo descargado no es un formato válido de BLOCKSI.' };
+      }
+
+      if (parsedJSON.password !== passwordHash) {
+        return { success: false, error: 'La contraseña o usuario remotos no coinciden. Verifique sus credenciales.' };
+      }
+
+      // Load user database space
+      db.loadUser(username);
+      
+      const accs = db.getAccounts();
+      const normalized = username.toLowerCase().trim();
+      const existingIdx = accs.findIndex(a => a.username === normalized);
+      const accObject = { username: normalized, passwordHash, securityAnswer: parsedJSON.securityAnswer || '' };
+      
+      if (existingIdx >= 0) {
+        accs[existingIdx] = accObject;
+      } else {
+        accs.push(accObject);
+      }
+      db.saveAccounts(accs);
+
+      // Import database records
+      db.importData(decodedStr);
+
+      // Inject custom cloud settings for this user
+      const currentSet = db.getSettings();
+      db.saveSettings({
+        ...currentSet,
+        githubEnabled: true,
+        githubUsername: ghUsername,
+        githubRepo: ghRepo,
+        githubBranch: branch,
+        githubToken: ghToken,
+        githubPath: filePath
+      });
+
+      setActiveUser(username);
+      return { success: true };
+    } catch (err: any) {
+      console.error(err);
+      return { success: false, error: err.message || 'Error de conexión' };
+    } finally {
+      setIsGitHubSyncing(false);
+    }
+  };
 
   const saveSettings = (newSettings: AppSettings) => {
     db.saveSettings(newSettings);
@@ -230,6 +356,15 @@ export const BlocksiProvider: React.FC<{ children: React.ReactNode }> = ({ child
   };
 
   useEffect(() => {
+    if (!activeUser) {
+      setNotes([]);
+      setReminders([]);
+      setCategories([]);
+      setTags([]);
+      setHistory([]);
+      return;
+    }
+
     reloadFromDB();
 
     // Pull on boot
@@ -240,16 +375,14 @@ export const BlocksiProvider: React.FC<{ children: React.ReactNode }> = ({ child
       }, 800);
     }
 
-    // Setup an initial notification alert to welcome the user and demonstrate local alerts
+    // Setup an initial notification alert to welcome the user
     setTimeout(() => {
       triggerMockNotification(
-        '🔔 Recordatorio de Hoy',
-        'Tienes reuniones pendientes del Proyecto Rocket programadas para esta tarde.',
-        'n3',
-        'r1'
+        '🔔 Sesión Iniciada',
+        `Hola, ${activeUser.charAt(0).toUpperCase() + activeUser.slice(1)}. BLOCKSI está listo.`
       );
     }, 2000);
-  }, []);
+  }, [activeUser]);
 
   const triggerMockNotification = (title: string, body: string, linkedNoteId?: string, reminderId?: string) => {
     const notifyEnabled = db.getSettings().notificationsEnabled;
@@ -495,6 +628,13 @@ export const BlocksiProvider: React.FC<{ children: React.ReactNode }> = ({ child
         triggerMockNotification,
         dismissNotification,
         postponeReminder,
+
+        activeUser,
+        registerUser,
+        loginUser,
+        recoverPassword,
+        logoutUser,
+        connectGitHubSyncAccount,
       }}
     >
       {children}
