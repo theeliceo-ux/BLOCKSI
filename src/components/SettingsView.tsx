@@ -39,7 +39,6 @@ export const SettingsView: React.FC = () => {
 
   // Settings states
   const [theme, setTheme] = useState(settings.theme);
-  const [fontSize, setFontSize] = useState(settings.fontSize);
   const [notifications, setNotifications] = useState(settings.notificationsEnabled);
 
   // GitHub Sync states
@@ -75,7 +74,7 @@ export const SettingsView: React.FC = () => {
     saveSettings({
       theme,
       language: 'es',
-      fontSize,
+      fontSize: 'md',
       notificationsEnabled: notifications,
       autoBackup: settings.autoBackup,
       githubEnabled: ghEnabled,
@@ -270,27 +269,6 @@ export const SettingsView: React.FC = () => {
                 </button>
               </div>
             </div>
-
-            {/* Font size selectors */}
-            <div className="space-y-2">
-              <label className="text-[10px] font-mono font-black text-black/60 uppercase block tracking-wider">Tamaño del Texto del Editor</label>
-              <div className="flex bg-[#F9F9F7] border-2 border-black rounded-none overflow-hidden p-0.5 max-w-sm">
-                {(['sm', 'md', 'lg', 'xl'] as const).map((sz) => (
-                  <button
-                    key={sz}
-                    type="button"
-                    onClick={() => setFontSize(sz)}
-                    className={`flex-1 py-1.5 text-[10px] font-mono font-black uppercase rounded-none transition-all cursor-pointer ${
-                      fontSize === sz ? 'bg-black text-white' : 'text-black/55 hover:bg-black/5'
-                    }`}
-                  >
-                    {sz === 'sm' ? 'Pequeño' : sz === 'md' ? 'Mediano' : sz === 'lg' ? 'Grande' : 'Extra'}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-
 
             {/* Notifications toggles */}
             <div className="flex items-center justify-between p-4 bg-[#F9F9F7] rounded-none border-2 border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]">

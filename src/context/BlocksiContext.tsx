@@ -76,6 +76,13 @@ export interface AppNotification {
   reminderId?: string;
 }
 
+const getLocalDateString = (d: Date = new Date()) => {
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
 const BlocksiContext = createContext<BlocksiContextProps | undefined>(undefined);
 
 export const BlocksiProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -105,6 +112,13 @@ export const BlocksiProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
   const [isGitHubSyncing, setIsGitHubSyncing] = useState<boolean>(false);
   const [lastGitSyncTime, setLastGitSyncTime] = useState<string | null>(null);
+
+  const triggerAutoPush = () => {
+    const settingsNow = db.getSettings();
+    if (settingsNow.githubEnabled && settingsNow.githubUsername && settingsNow.githubRepo && settingsNow.githubToken) {
+      pushToGitHub().catch((err) => console.log('Auto-push failed:', err));
+    }
+  };
 
   useEffect(() => {
     const cachedTime = localStorage.getItem('blocksi_last_gitsync');
@@ -413,7 +427,7 @@ export const BlocksiProvider: React.FC<{ children: React.ReactNode }> = ({ child
   // Notes Operations
   const addNote = (title: string, content: string, cat = 'Personal', inputTags: string[] = []): Note => {
     const d = new Date();
-    const currentDateStr = d.toISOString().split('T')[0];
+    const currentDateStr = getLocalDateString(d);
     const currentTimeStr = d.toTimeString().split(' ')[0].substring(0, 5);
 
     const newNote: Note = {
@@ -435,28 +449,33 @@ export const BlocksiProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
     const added = db.saveNote(newNote);
     reloadFromDB();
+    triggerAutoPush();
     return added;
   };
 
   const editNote = (note: Note, isAutoSave = false, summary = ''): Note => {
     const res = db.saveNote(note, isAutoSave, summary);
     reloadFromDB();
+    triggerAutoPush();
     return res;
   };
 
   const removeNote = (id: string) => {
     db.deleteNote(id);
     reloadFromDB();
+    triggerAutoPush();
   };
 
   const recoverNote = (id: string) => {
     db.restoreNote(id);
     reloadFromDB();
+    triggerAutoPush();
   };
 
   const scrubNote = (id: string) => {
     db.purgeNote(id);
     reloadFromDB();
+    triggerAutoPush();
   };
 
   const getNoteVersions = (noteId: string): NoteVersion[] => {
@@ -466,6 +485,7 @@ export const BlocksiProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const revertToVersion = (versionId: string): Note | null => {
     const res = db.restoreVersion(versionId);
     reloadFromDB();
+    triggerAutoPush();
     return res;
   };
 
@@ -478,27 +498,32 @@ export const BlocksiProvider: React.FC<{ children: React.ReactNode }> = ({ child
     };
     db.saveReminder(newRem);
     reloadFromDB();
+    triggerAutoPush();
     return newRem;
   };
 
   const editReminder = (rem: Reminder) => {
     db.saveReminder(rem);
     reloadFromDB();
+    triggerAutoPush();
   };
 
   const removeReminder = (id: string) => {
     db.deleteReminder(id);
     reloadFromDB();
+    triggerAutoPush();
   };
 
   const recoverReminder = (id: string) => {
     db.restoreReminder(id);
     reloadFromDB();
+    triggerAutoPush();
   };
 
   const scrubReminder = (id: string) => {
     db.purgeReminder(id);
     reloadFromDB();
+    triggerAutoPush();
   };
 
   // Postpone logic
@@ -510,7 +535,7 @@ export const BlocksiProvider: React.FC<{ children: React.ReactNode }> = ({ child
     const now = new Date();
     const future = new Date(now.getTime() + minutes * 60 * 1000);
     const timeStr = future.toTimeString().split(' ')[0].substring(0, 5);
-    const dateStr = future.toISOString().split('T')[0];
+    const dateStr = getLocalDateString(future);
 
     const updated: Reminder = {
       ...rem,
@@ -520,6 +545,7 @@ export const BlocksiProvider: React.FC<{ children: React.ReactNode }> = ({ child
     db.saveReminder(updated);
     db.logHistory('reminder_postponed', `Se pospuso el recordatorio "${rem.title}" por ${minutes} minutos.`, rem.id, rem.title);
     reloadFromDB();
+    triggerAutoPush();
 
     // Trigger confirmation notification
     triggerMockNotification('⏰ Recordatorio Pospuesto', `"${rem.title}" pospuesto por ${minutes} minutos (${timeStr}).`);
@@ -537,11 +563,13 @@ export const BlocksiProvider: React.FC<{ children: React.ReactNode }> = ({ child
     db.saveCategory(newCat);
     db.logHistory('category_created', `Nueva categoría creada: ${name}`);
     reloadFromDB();
+    triggerAutoPush();
   };
 
   const removeCategory = (id: string) => {
     db.deleteCategory(id);
     reloadFromDB();
+    triggerAutoPush();
   };
 
   const addNewTag = (name: string) => {
@@ -554,17 +582,19 @@ export const BlocksiProvider: React.FC<{ children: React.ReactNode }> = ({ child
     db.saveTag(newTag);
     db.logHistory('tag_created', `Nueva etiqueta creada: #${cleanName}`);
     reloadFromDB();
+    triggerAutoPush();
   };
 
   const removeExistingTag = (id: string) => {
     db.deleteTag(id);
     reloadFromDB();
+    triggerAutoPush();
   };
 
   // Database actions
   const clearAllData = () => {
     db.clearDatabase();
-    reloadFromDB();
+    logoutUser();
   };
 
   const importJsonData = (json: string): boolean => {

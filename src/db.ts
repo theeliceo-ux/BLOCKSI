@@ -36,9 +36,16 @@ const DEFAULT_SETTINGS: AppSettings = {
 // Seed Helper Dates
 // We want seed dates relative to the active date (June 2026 as per metadata if possible,
 // but let's dynamically anchor to June 2026 or current year, e.g. 2026-06-11)
+const getLocalDateStringNoUTC = (d: Date = new Date()) => {
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
 const getSeedDates = () => {
   const base = new Date('2026-06-11T12:00:00');
-  const formatDateStr = (d: Date) => d.toISOString().split('T')[0];
+  const formatDateStr = (d: Date) => getLocalDateStringNoUTC(d);
   const formatTimeStr = (d: Date) => d.toTimeString().split(' ')[0].substring(0, 5);
 
   const d0 = base; // Today
@@ -597,7 +604,7 @@ class BlocksiDB {
   saveNote(note: Note, isAutoSave = false, logText = '') {
     const orig = this.cache.notes.find((n) => n.id === note.id);
     const date = new Date();
-    const currentDateStr = date.toISOString().split('T')[0];
+    const currentDateStr = getLocalDateStringNoUTC(date);
     const currentTimeStr = date.toTimeString().split(' ')[0].substring(0, 5);
 
     const updatedNote: Note = {
@@ -718,7 +725,7 @@ class BlocksiDB {
     note.charCount = version.content.length;
 
     const date = new Date();
-    note.modifiedAt = date.toISOString().split('T')[0];
+    note.modifiedAt = getLocalDateStringNoUTC(date);
     note.modifiedTime = date.toTimeString().split(' ')[0].substring(0, 5);
 
     this.persist(KEYS.NOTES, this.cache.notes);

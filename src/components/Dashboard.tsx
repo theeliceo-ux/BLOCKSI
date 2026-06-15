@@ -26,7 +26,8 @@ export const Dashboard: React.FC = () => {
     setSelectedDate,
     setActiveNoteId,
     editReminder,
-    addNote
+    addNote,
+    activeUser
   } = useBlocksi();
 
   const [currentTime, setCurrentTime] = useState<Date>(new Date());
@@ -128,7 +129,7 @@ export const Dashboard: React.FC = () => {
         <div className="space-y-2 z-10">
           <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-[#FF4D00] text-white text-xs font-serif font-black uppercase tracking-widest border-2 border-black">
             <Sparkles size={12} />
-            {getGreeting()}, theeliceo@gmail.com
+            {getGreeting()}, {activeUser || 'Usuario'}
           </span>
           <h1 className="text-3xl md:text-5xl font-serif font-black text-white uppercase tracking-tighter leading-none">
             {formattedDay}, {formattedDateNum}

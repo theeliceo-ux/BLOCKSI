@@ -266,6 +266,11 @@ export const AuthView: React.FC = () => {
             >
               Iniciar Sesión
             </button>
+
+            <div className="p-3 bg-[#F9F9F7] border-2 border-dashed border-black/40 rounded-none text-[10px] font-mono text-black/70 uppercase line-clamp-none leading-normal">
+              <span className="font-black text-[#FF4D00] block mb-1">💡 ¿INICIANDO SESIÓN EN OTRO DISPOSITIVO?</span>
+              Para cargar automáticamente tus notas y recordatorios en un nuevo dispositivo, utiliza la pestaña superior <span className="font-black text-black">"Git Sync"</span> con tus credenciales de GitHub conectadas. ¡Los datos se sincronizarán solos!
+            </div>
           </form>
         )}
 
