@@ -14,7 +14,8 @@ import {
   Trash2,
   CheckCircle,
   AlertOctagon,
-  FolderSync
+  FolderSync,
+  HelpCircle
 } from 'lucide-react';
 
 export const SettingsView: React.FC = () => {
@@ -49,6 +50,7 @@ export const SettingsView: React.FC = () => {
   const [ghToken, setGhToken] = useState(settings.githubToken || '');
   const [ghPath, setGhPath] = useState(settings.githubPath || `blocksi-data-${settings.githubUsername || 'user'}.json`);
   const [syncMsg, setSyncMsg] = useState<{ type: 'success' | 'error' | ''; text: string }>({ type: '', text: '' });
+  const [showTutorial, setShowTutorial] = useState(false);
   const [confirmModal, setConfirmModal] = useState<{
     isOpen: boolean;
     title: string;
@@ -69,6 +71,18 @@ export const SettingsView: React.FC = () => {
   const [newTagName, setNewTagName] = useState('');
 
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleToggleNotifications = () => {
+    const nextVal = !notifications;
+    setNotifications(nextVal);
+    if (nextVal && 'Notification' in window) {
+      Notification.requestPermission().then((permission) => {
+        if (permission === 'granted') {
+          triggerMockNotification('🔔 Alertas de Sistema', '¡Perfecto! BLOCKSI ahora enviará notificaciones nativas a este dispositivo móvil o computadora.');
+        }
+      });
+    }
+  };
 
   const handleApplySettings = () => {
     saveSettings({
@@ -193,6 +207,31 @@ export const SettingsView: React.FC = () => {
     });
   };
 
+  const handleWipeDataCompletely = () => {
+    setConfirmModal({
+      isOpen: true,
+      title: '⚠️ ¿LIMPIAR LIENZO EN BLANCO?',
+      message: '¿ESTÁS ABSOLUTAMENTE SEGURO? Esto eliminará DEFINITIVAMENTE todos tus datos Y NO VOLVERÁ a cargar las notas y recordatorios de ejemplo/referencia de BLOCKSI. Tu cuenta quedará 100% vacía para un inicio limpio.',
+      isAlertOnly: false,
+      onConfirm: () => {
+        clearAllData(true);
+        triggerMockNotification('🚨 Lienzo en Blanco Establecido', 'Se purgaron todos los datos de sesión y ejemplo.');
+        
+        setTimeout(() => {
+          setConfirmModal({
+            isOpen: true,
+            title: 'Lienzo Limpio',
+            message: 'Se ha creado un lienzo 100% limpio y vacío. La aplicación cargará con espacio virgen. Haz clic para reiniciar.',
+            isAlertOnly: true,
+            onConfirm: () => {
+              window.location.reload();
+            }
+          });
+        }, 300);
+      }
+    });
+  };
+
   const handleAddCat = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newCatName.trim()) return;
@@ -281,7 +320,7 @@ export const SettingsView: React.FC = () => {
 
               <button
                 type="button"
-                onClick={() => setNotifications(!notifications)}
+                onClick={handleToggleNotifications}
                 className={`w-12 h-6 border-2 border-black rounded-none p-0.5 transition-colors duration-200 cursor-pointer ${
                   notifications ? 'bg-[#FF4D00]' : 'bg-[#EFEFEF]'
                 }`}
@@ -392,6 +431,64 @@ export const SettingsView: React.FC = () => {
               </span>
             </div>
 
+            {/* COLLAPSIBLE TUTORIAL GITHUB */}
+            <div className="md:col-span-2 mt-1">
+              <button
+                type="button"
+                onClick={() => setShowTutorial(!showTutorial)}
+                className="w-full flex items-center justify-between p-3 bg-white border-2 border-black hover:bg-black/5 text-left transition-all cursor-pointer"
+              >
+                <span className="text-[10px] font-sans font-black uppercase text-black flex items-center gap-2">
+                  <HelpCircle size={14} className="text-[#FF4D00]" /> ¿Cómo conseguir las credenciales de GitHub? (Guía Paso a Paso)
+                </span>
+                <span className="font-mono text-[9px] font-black text-[#FF4D00]">
+                  {showTutorial ? '▲ OCULTAR' : '▼ MOSTRAR GUÍA'}
+                </span>
+              </button>
+              
+              {showTutorial && (
+                <div className="p-4 bg-white border-x-2 border-b-2 border-black space-y-4 text-[10px] font-mono text-black/75 leading-normal uppercase">
+                  <div>
+                    <span className="font-black text-[#FF4D00] block mb-1">1. Crear un repositorio privado o público</span>
+                    <p className="normal-case text-black/70">
+                      Entra a <a href="https://github.com" target="_blank" rel="noopener noreferrer" className="underline font-bold text-[#FF4D00]">github.com</a>, dale a <span className="font-bold">"New repository"</span>. Nómbralo como quieras (ej. <code className="bg-black/5 px-1 py-0.5 border border-black/15 font-mono">blocksi-data</code>). Puede ser <strong>público</strong> o <strong>privado</strong> (recomendamos privado si tus notas contienen datos personales). Asegúrate de marcar <span className="font-bold">"Add a README file"</span> antes de crearlo para que la rama principal (generalmente <code className="bg-black/5 px-1 py-0.5 border border-black/15 font-mono">main</code>) se inicialice de forma automática.
+                    </p>
+                  </div>
+
+                  <div>
+                    <span className="font-black text-[#FF4D00] block mb-1">2. Crear un Personal Access Token (PAT)</span>
+                    <p className="normal-case text-black/70 mb-2">
+                      Para dar permisos a BLOCKSI de guardar tus archivos, necesitas un token de acceso clásico:
+                    </p>
+                    <ol className="list-decimal pl-4 space-y-1 normal-case text-black/70">
+                      <li>Haz clic en tu foto de perfil en GitHub arriba a la derecha y selecciona <span className="font-bold">Settings</span>.</li>
+                      <li>Haz scroll hacia abajo en la barra izquierda y pincha en <span className="font-bold">&lt;&gt; Developer settings</span>.</li>
+                      <li>Selecciona <span className="font-bold">Personal access tokens</span> &gt; <span className="font-bold">Tokens (classic)</span>.</li>
+                      <li>Haz clic en <span className="font-bold">Generate new token</span> &gt; <span className="font-bold">Generate new token (classic)</span>.</li>
+                      <li>Asigna una nota identitaria (ej. "Token de BLOCKSI") y define la expiración que prefieras (ej. 90 días o sin expiración).</li>
+                      <li><strong>MUY IMPORTANTE: Secciona la casilla <code className="bg-black/5 px-1 font-bold text-black border border-black/15 font-mono">"repo"</code></strong> (esta casilla única otorga permisos totales de escritura, lectura, ramas y contenido: <em>contents, actions, status, security</em>).</li>
+                      <li>Haz scroll hasta el fondo y haz clic en <span className="font-bold">Generate token</span>.</li>
+                      <li><strong>Copia el token generado</strong> (empieza por <code className="font-bold">ghp_...</code>) y guárdalo en un lugar seguro, ¡solo se mostrará una vez!</li>
+                    </ol>
+                  </div>
+
+                  <div className="p-3 bg-[#FF4D00]/5 border-2 border-dashed border-[#FF4D00]/30 space-y-1">
+                    <span className="font-black text-[#FF4D00] block">📌 Ejemplo de completado exacto</span>
+                    <p className="normal-case text-black/70">
+                      Rellena los campos del formulario superior así:
+                    </p>
+                    <ul className="list-disc pl-4 text-[9px] normal-case text-black/70">
+                      <li><span className="font-bold">Usuario de GitHub:</span> Tu nombre de usuario de GitHub (ej. <code className="font-bold text-black uppercase font-mono">theeliceo</code>)</li>
+                      <li><span className="font-bold">Repositorio:</span> El nombre exacto de tu repo (ej. <code className="font-bold text-black font-mono uppercase">blocksi-data</code>)</li>
+                      <li><span className="font-bold">Rama:</span> La rama principal (casi siempre es <code className="font-bold text-black font-mono uppercase">main</code> o <code className="font-bold text-black font-mono uppercase">master</code>)</li>
+                      <li><span className="font-bold">Nombre del archivo:</span> ej. <code className="font-bold text-black font-mono">mis-notas.json</code></li>
+                      <li><span className="font-bold">Token (PAT):</span> El token copiado anteriormente (<code className="font-bold text-black font-mono">ghp_AaBbCc...</code>)</li>
+                    </ul>
+                  </div>
+                </div>
+              )}
+            </div>
+
             {/* Sync Actions */}
             <div className="md:col-span-2 flex flex-wrap gap-2.5 pt-3 border-t-2 border-black/10">
               <button
@@ -492,12 +589,19 @@ export const SettingsView: React.FC = () => {
               />
             </div>
 
-            <div className="border-t-2 border-black pt-3">
+            <div className="border-t-2 border-black pt-3 space-y-2">
               <button
                 onClick={handleResetData}
-                className="w-full py-2.5 px-3 bg-white border-2 border-black hover:bg-red-600 hover:text-white rounded-none text-xs font-mono font-black uppercase tracking-wider transition-colors cursor-pointer"
+                className="w-full py-2 px-3 bg-white border-2 border-black hover:bg-black hover:text-white rounded-none text-xs font-mono font-black uppercase tracking-wider flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
               >
-                <RotateCcw size={13} /> Restablecer BLOCKSI
+                <RotateCcw size={13} /> Restablecer (Con Datos Semilla)
+              </button>
+
+              <button
+                onClick={handleWipeDataCompletely}
+                className="w-full py-2 px-3 bg-white border-2 border-black hover:bg-red-600 hover:text-white rounded-none text-xs font-mono font-black uppercase tracking-wider flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+              >
+                <Trash2 size={13} /> Limpiar Base de Datos (Lienzo en Blanco)
               </button>
             </div>
           </div>

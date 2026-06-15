@@ -40,7 +40,7 @@ interface BlocksiContextProps {
   removeExistingTag: (id: string) => void;
 
   // Database Actions
-  clearAllData: () => void;
+  clearAllData: (completely?: boolean) => void;
   importJsonData: (json: string) => boolean;
   exportJsonData: () => string;
 
@@ -414,9 +414,32 @@ export const BlocksiProvider: React.FC<{ children: React.ReactNode }> = ({ child
     
     setActiveNotifications((prev) => [newAlert, ...prev]);
 
-    // Optional browser standard notification request if allowed
-    if ('Notification' in window && Notification.permission === 'granted') {
-      new Notification(title, { body });
+    // Real native system notifications on phones and computers
+    if ('Notification' in window) {
+      if (Notification.permission === 'granted') {
+        if (navigator.serviceWorker) {
+          navigator.serviceWorker.ready.then((reg) => {
+            reg.showNotification(title, {
+              body,
+              vibrate: [200, 100, 200],
+              badge: '/logo.png',
+              tag: 'blocksi-alert'
+            } as any).catch(() => {
+              new Notification(title, { body });
+            });
+          }).catch(() => {
+            new Notification(title, { body });
+          });
+        } else {
+          new Notification(title, { body });
+        }
+      } else if (Notification.permission === 'default') {
+        Notification.requestPermission().then((permission) => {
+          if (permission === 'granted') {
+            new Notification(title, { body });
+          }
+        });
+      }
     }
   };
 
@@ -592,8 +615,12 @@ export const BlocksiProvider: React.FC<{ children: React.ReactNode }> = ({ child
   };
 
   // Database actions
-  const clearAllData = () => {
-    db.clearDatabase();
+  const clearAllData = (completely = false) => {
+    if (completely) {
+      db.clearDatabaseCompletely();
+    } else {
+      db.clearDatabase();
+    }
     logoutUser();
   };
 

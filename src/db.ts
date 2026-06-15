@@ -832,6 +832,29 @@ class BlocksiDB {
     this.logHistory('db_cleared', 'Base de datos local completamente reiniciada a valores predeterminados.');
   }
 
+  clearDatabaseCompletely() {
+    this.cache.notes = [];
+    this.cache.reminders = [];
+    this.cache.versions = [];
+    this.cache.history = [];
+    this.cache.categories = [];
+    this.cache.tags = [];
+    this.cache.settings = DEFAULT_SETTINGS;
+
+    if (this.activeUser) {
+      const activeSuffix = `_${this.activeUser}`;
+      localStorage.setItem(KEYS.NOTES + activeSuffix, JSON.stringify([]));
+      localStorage.setItem(KEYS.REMINDERS + activeSuffix, JSON.stringify([]));
+      localStorage.setItem(KEYS.VERSIONS + activeSuffix, JSON.stringify([]));
+      localStorage.setItem(KEYS.HISTORY + activeSuffix, JSON.stringify([]));
+      localStorage.setItem(KEYS.CATEGORIES + activeSuffix, JSON.stringify([]));
+      localStorage.setItem(KEYS.TAGS + activeSuffix, JSON.stringify([]));
+      localStorage.setItem(KEYS.SETTINGS + activeSuffix, JSON.stringify(DEFAULT_SETTINGS));
+    }
+
+    this.logHistory('db_cleared', 'Base de datos local vaciada por completo (lienzo en blanco).');
+  }
+
   exportData(): string {
     const dump = {
       notes: this.cache.notes,

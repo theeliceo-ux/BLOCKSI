@@ -318,14 +318,14 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({ noteId, onClose }) => {
 
     const lines = content.split('\n');
     return (
-      <div className="space-y-3 prose prose-invert font-sans text-slate-300 max-w-none text-sm md:text-base leading-relaxed">
+      <div className="space-y-3 prose dark:prose-invert font-sans text-black dark:text-slate-300 max-w-none text-sm md:text-base leading-relaxed">
         {lines.map((line, idx) => {
           const trimmed = line.trim();
 
           // Blockquote
           if (trimmed.startsWith('>')) {
             return (
-              <blockquote key={idx} className="border-l-4 border-indigo-500 pl-4 py-1 italic text-slate-400 bg-slate-800/20 my-2 rounded-r-md">
+              <blockquote key={idx} className="border-l-4 border-indigo-500 pl-4 py-1.5 italic text-black/60 dark:text-slate-400 bg-black/5 dark:bg-slate-800/20 my-2 rounded-none">
                 {trimmed.substring(1).trim()}
               </blockquote>
             );
@@ -333,18 +333,18 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({ noteId, onClose }) => {
 
           // Headers
           if (trimmed.startsWith('# ')) {
-            return <h1 key={idx} className="font-serif font-bold text-2xl text-white pt-3 border-b border-slate-800 pb-1">{trimmed.substring(2)}</h1>;
+            return <h1 key={idx} className="font-serif font-black text-2xl text-black dark:text-white pt-3 border-b-2 border-dashed border-black/15 dark:border-white/15 pb-1 uppercase">{trimmed.substring(2)}</h1>;
           }
           if (trimmed.startsWith('## ')) {
-            return <h2 key={idx} className="font-serif font-semibold text-xl text-white pt-2">{trimmed.substring(3)}</h2>;
+            return <h2 key={idx} className="font-serif font-bold text-xl text-black dark:text-white pt-2 uppercase">{trimmed.substring(3)}</h2>;
           }
           if (trimmed.startsWith('### ')) {
-            return <h3 key={idx} className="font-serif font-medium text-lg text-white pt-1">{trimmed.substring(4)}</h3>;
+            return <h3 key={idx} className="font-serif font-bold text-lg text-black dark:text-white pt-1">{trimmed.substring(4)}</h3>;
           }
 
           // Separator
           if (trimmed === '---') {
-            return <hr key={idx} className="border-t border-slate-800 my-4" />;
+            return <hr key={idx} className="border-t-2 border-black/10 dark:border-white/10 my-4" />;
           }
 
           // Checklist completed
@@ -353,10 +353,10 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({ noteId, onClose }) => {
               <div
                 key={idx}
                 onClick={() => toggleChecklistItem(idx)}
-                className="flex items-start gap-2.5 cursor-pointer hover:bg-slate-800/30 p-1 rounded-md transition-colors"
+                className="flex items-start gap-2.5 cursor-pointer hover:bg-black/5 dark:hover:bg-slate-800/30 p-1 rounded-none transition-colors"
               >
-                <CheckSquare size={18} className="text-indigo-400 shrink-0 mt-0.5" />
-                <span className="line-through text-slate-500">{trimmed.substring(5).trim()}</span>
+                <CheckSquare size={18} className="text-indigo-600 dark:text-indigo-400 shrink-0 mt-0.5" />
+                <span className="line-through text-black/40 dark:text-slate-500">{trimmed.substring(5).trim()}</span>
               </div>
             );
           }
@@ -367,10 +367,10 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({ noteId, onClose }) => {
               <div
                 key={idx}
                 onClick={() => toggleChecklistItem(idx)}
-                className="flex items-start gap-2.5 cursor-pointer hover:bg-slate-800/30 p-1 rounded-md transition-colors"
+                className="flex items-start gap-2.5 cursor-pointer hover:bg-black/5 dark:hover:bg-slate-800/30 p-1 rounded-none transition-colors"
               >
-                <div className="w-[18px] h-[18px] border-2 border-slate-500 rounded-xs shrink-0 mt-0.5 flex items-center justify-center hover:border-indigo-400" />
-                <span>{trimmed.substring(5).trim()}</span>
+                <div className="w-[18px] h-[18px] border-2 border-black dark:border-slate-500 rounded-none shrink-0 mt-0.5 flex items-center justify-center hover:border-indigo-600 dark:hover:border-indigo-400" />
+                <span className="text-black dark:text-slate-300">{trimmed.substring(5).trim()}</span>
               </div>
             );
           }
@@ -378,7 +378,7 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({ noteId, onClose }) => {
           // Bullet items
           if (trimmed.startsWith('- ') || trimmed.startsWith('* ')) {
             return (
-              <li key={idx} className="list-disc ml-5 pl-1">
+              <li key={idx} className="list-disc ml-5 pl-1 text-black dark:text-slate-300">
                 {trimmed.substring(2)}
               </li>
             );
@@ -393,15 +393,15 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({ noteId, onClose }) => {
           let html = trimmed;
           // Hyperlink [text](url) -> anchor
           const linkRegex = /\[([^\]]+)\]\(([^)]+)\)/g;
-          html = html.replace(linkRegex, '<a href="$2" target="_blank" rel="noopener noreferrer" class="text-indigo-400 underline hover:text-indigo-300">$1</a>');
+          html = html.replace(linkRegex, '<a href="$2" target="_blank" rel="noopener noreferrer" class="text-indigo-600 dark:text-indigo-400 font-bold underline hover:opacity-80">$1</a>');
           
           // Bold **text** -> strong
           const boldRegex = /\*\*([^*]+)\*\*/g;
-          html = html.replace(boldRegex, '<strong class="font-bold text-white">$1</strong>');
+          html = html.replace(boldRegex, '<strong class="font-bold text-black dark:text-white">$1</strong>');
 
           // Italic *text* -> em
           const italicRegex = /\*([^*]+)\*/g;
-          html = html.replace(italicRegex, '<em class="italic text-slate-200">$1</em>');
+          html = html.replace(italicRegex, '<em class="italic text-black/70 dark:text-slate-200">$1</em>');
 
           return (
             <p
